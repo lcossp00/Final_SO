@@ -127,7 +127,7 @@ int main(){
     pthread_create(&enfermeroHilo_2, NULL, accionesEnfermero, &enfermero2);
     pthread_create(&enfermeroHilo_3, NULL, accionesEnfermero, &enfermero3);
 
-    //crear el hilo medico:
+    //Crear el hilo medico:
     pthread_create(&medicoHilo, NULL, accionesMedico, NULL);
 
     //crear el hilo estadistico
@@ -206,7 +206,7 @@ void nuevoPaciente (int sig){
                 writeLogMessage(logInicio, "");
             }
             contadorPacientesTotal++;
-        contadorPacientes++;
+            contadorPacientes++;
         pthread_mutex_unlock(&mutexAccesoColaPacientes);
         pthread_create(&listaPacientes[pos].hiloEjecucionPaciente, NULL, accionesPaciente, (void *)&identif);
 
@@ -216,8 +216,7 @@ void nuevoPaciente (int sig){
             
         }else{ //No hay hueco
             char logSalidaCreacionPaciente[100];
-    
-            printf("No hay espacio para más pacientes en la lista");
+             printf("No hay espacio para más pacientes en la lista");
         }
     }  
 }
@@ -225,75 +224,77 @@ void nuevoPaciente (int sig){
 void *accionesPaciente(void *id){
     int aux = 0;
     char logPacientes[100];
-    char msj[100];
-    /*while(1){
-        printf("Estoy en el while\n");
-        sleep(2);
-    }*/
+    char logIdentificador[50];
+   
+    int comportamientoPaciente;
+    int reaccionPaciente;
+    int catarroPaciente;
+    int auxSalida = 1;
     int identificador = *(int*)id;
+
+    sprintf(logIdentificador, "[Paciente]");
+
 
     pthread_mutex_lock(&mutexAccesoColaPacientes);
         int posicion = obtienePosPaciente(identificador);
-        //listaPacientes[posicion].id = identificador;
 
-        //Guarda en el log la hora de entrada
-        char logEntrada[100];
-        sprintf(logEntrada, "[Paciente] El paciente %d ha entrado en la pos %d", identificador, posicion);
-        writeLogMessage(logEntrada, "");
-        
-        //Guarda en el log el tipo de solicitud
+        /*Guarda en el log la hora de entrada*/
+        sprintf(logPacientes, "%d ha entrado en la posicion %d", identificador, posicion);
+        writeLogMessage(logIdentificador, logPacientes);
         
         int tipo = listaPacientes[posicion].tipo;
     pthread_mutex_unlock(&mutexAccesoColaPacientes);
     
-    char logEntradaSolicitud[100];
-    sprintf(logEntradaSolicitud, "Es de tipo %d", tipo);
-    writeLogMessage(logEntradaSolicitud, "");
+    /*Guarda en el log el tipo de solicitud*/
+    sprintf(logPacientes, "%d es de tipo %d",identificador, tipo);
+    writeLogMessage(logIdentificador, logPacientes);
 
-     //Duerme 3 segundos
+    /*Duerme 3 segundos*/
     sleep(3);
-    char logSalidaPaciente[100];
-    int comportamientoPaciente;
-    int reaccionPaciente;
-    int catarrroPaciente;
-    int atend;
-    int auxSalida = 1;
-        
+   
+   /* Comprueba si esta siendo atendido */     
     while(listaPacientes[posicion].atendido == 0){
-        sleep(1);
+
+        /*Calculamos el comportamiento del paciente*/
+
+        /*Duerme 3 segundos*/
+        sleep(3);
     }
-    sprintf(logEntrada, "[Paciente] El paciente %d esta siendo atendido", identificador);
-    writeLogMessage(logEntrada, "");
+    sprintf(logPacientes, "%d esta siendo atendido", identificador);
+    writeLogMessage(logIdentificador, logPacientes);
+
+    /*Esperar a que termine de ser atendido*/
     while(listaPacientes[posicion].atendido != 2){
        sleep(1); 
     }
 
-    //Calculamos si ha tenido reaccion
+    /*Calculamos si ha tenido reaccion*/
     reaccionPaciente = calculaAleatorios(0,99);
-    //sprintf(logSalidaPaciente, "[Paciente %d] Reaccion = %d",identificador, reaccionPaciente);
-    //writeLogMessage(logSalidaPaciente, "");
-    if(reaccionPaciente < 50){ //Ha tenido reaccion
+    
+    if(reaccionPaciente < 10){ //Ha tenido reaccion
+
+        /* Si le da ponemos el valor de atendido a 4*/
         pthread_mutex_lock(&mutexAccesoColaPacientes);
             listaPacientes[posicion].atendido = 4;
         pthread_mutex_unlock(&mutexAccesoColaPacientes);
 
-        sprintf(logSalidaPaciente, "[Paciente] El paciente %d ha tenido reaccion. %d", identificador, reaccionPaciente);
-        writeLogMessage(logSalidaPaciente, "");
+        sprintf(logPacientes, "%d ha tenido reaccion. %d", identificador, reaccionPaciente);
+        writeLogMessage(logIdentificador, logPacientes);
 
+        /*Esperamos a que termine su atencion con el medico*/
         while(listaPacientes[posicion].atendido != 5){
             sleep(1);
         }
     }else{ //Puede hacer el estudio serologico
         reaccionPaciente = calculaAleatorios(0,99);
-        sprintf(logPacientes, "[Paciente] Estudio serologico %d", reaccionPaciente);
-        writeLogMessage(logPacientes, "");
-        if(reaccionPaciente<50){
+
+        if(reaccionPaciente < 25){ 
             pthread_mutex_lock(&mutexAccesoColaPacientes);
                 listaPacientes[posicion].serologia = 1;
             pthread_mutex_unlock(&mutexAccesoColaPacientes);
 
-            sprintf(logPacientes, "[Paciente] El paciente %d realizará el estudio serologico", identificador);
-            writeLogMessage(logPacientes, "");
+            sprintf(logPacientes, "%d realizará el estudio serologico", identificador);
+            writeLogMessage(logIdentificador, logPacientes);
 
             //Espera a que el estadistico termine
             pthread_mutex_lock(&mutexEstadistico);
@@ -302,35 +303,248 @@ void *accionesPaciente(void *id){
 
             pthread_mutex_unlock(&mutexEstadistico);
 
-            sprintf(logPacientes, "[Paciente] El paciente %d sale del estudio serologico", identificador);
-            writeLogMessage(logPacientes, "");
+            sprintf(logPacientes, "%d sale del estudio serologico", identificador);
+            writeLogMessage(logIdentificador, logPacientes);
         }
     }
-
-
     //Cerramos el hilo
-    sprintf(logSalidaPaciente, "[Paciente] El paciente %d acaba y sale del consultorio.", identificador);
-    writeLogMessage(logSalidaPaciente, "");
+    sprintf(logPacientes, "%d acaba y sale del consultorio.", identificador);
+    writeLogMessage(logIdentificador, logPacientes);
 
     //Liberamos su espacio en cola
     sacaPacienteDeCola(posicion);
-         
-        
    
 }
-void sacaPacienteDeCola(int posicion){
 
-    pthread_mutex_lock(&mutexAccesoColaPacientes);
-    //Sacamos el paciente de la cola
+void *accionesEnfermero(void *id){
+    int i=0, encontrado=0, contadorCafe=0, posicion=0;
+    char logEnfermero[100];
+    char logIdentificador[50];
 
-    listaPacientes[posicion].id = -1;
-    listaPacientes[posicion].atendido = 0;
-    listaPacientes[posicion].tipo = 0;
-    listaPacientes[posicion].serologia = 0;
-    contadorPacientes--;
+    int tipoPaciente=0;
+    int ocupado = 0;
+    int comprueboOtraVez = -1;
+    int atiendoA = -1;
+    int identificador = *(int*)id; //El identificador del enfermero
+    
+   
+    sprintf(logIdentificador, "[Enfermero %d]", identificador);
+    
+    while(1){
+           
+        /*Busco si hay pacientes, sino duermo*/
+        while(pacientesEnCola(0) == 0){
+            sleep(1);
+        }
+        do{
+            /*Busco de mi tipo*/
+            atiendoA = cogerPaciente(identificador);
 
-    pthread_mutex_unlock(&mutexAccesoColaPacientes); 
-    pthread_exit(NULL);
+            /*Si no hay busco de otro y vuelvo a comprobar que no haya de mi tipo*/
+            if (atiendoA == -1) {
+                atiendoA = cogerPacienteExtra();
+                comprueboOtraVez = cogerPaciente(identificador); // Para evitar que se roben
+                if (comprueboOtraVez != -1) {
+                    atiendoA = comprueboOtraVez;
+                }
+            }
+            //Sleep?
+        }
+        while(atiendoA == -1);
+
+        /*Cambiamos el flag de atendido y buscamos la posicion del paciente*/
+        pthread_mutex_lock(&mutexAccesoColaPacientes);
+         
+            posicion = obtienePosPaciente(atiendoA);
+            listaPacientes[posicion].atendido=1;
+
+        pthread_mutex_unlock(&mutexAccesoColaPacientes);
+
+        sprintf(logEnfermero, "Va a atender a %d, en la posicion %d", atiendoA, posicion);
+        writeLogMessage(logIdentificador, logEnfermero);
+
+        /*Atiende al paciente*/
+        atenderPacientes(atiendoA,posicion);
+        
+        /*Cambiamos el flag de atendido*/
+        pthread_mutex_lock(&mutexAccesoColaPacientes);
+            listaPacientes[posicion].atendido=2; //ya ha sido atendido
+        pthread_mutex_unlock(&mutexAccesoColaPacientes);
+
+        /*Comprueba si toma cafe*/
+        //TODO
+
+    }
+       
+}
+
+void *accionesMedico(){
+    int i=0, encontrado=0, contadorCafe=0, posicion=0;
+    int tipoPaciente=0;
+    int atiendoA = -1;
+    int atiendoAReaccion = -1;
+
+    char logMedico[100];
+    char logIdentificador[50];
+
+    sprintf(logIdentificador, "[Medico]");
+
+    while(1){
+        /*Busca pacientes que no hayan sido atendidos o que tengan reaccion*/
+        while(pacientesEnCola(0) == 0 && pacientesEnCola(4) == 0){
+            sleep(1);
+        }
+        /*Busca primero si hay alguno con reaccion, luego si hay alguno no atendido*/
+        do{
+            atiendoAReaccion = cogerPacienteReaccion();
+            if (atiendoAReaccion == -1) {
+                atiendoA = cogerPacienteExtra();
+            }
+            sleep(1);
+        }
+        while(atiendoA == -1 && atiendoAReaccion == -1);
+        /*Esta en el bucle mientras no existan ambos tipos*/
+
+        /*Si tiene reaccion atendemos primero*/
+        if(atiendoAReaccion != -1){ 
+            pthread_mutex_lock(&mutexAccesoColaPacientes);
+                posicion = obtienePosPaciente(atiendoAReaccion); 
+            pthread_mutex_unlock(&mutexAccesoColaPacientes);
+            sleep(5);
+            /*Cambiamos el flag de atendido*/
+            pthread_mutex_lock(&mutexAccesoColaPacientes);
+               listaPacientes[posicion].atendido=5; 
+            pthread_mutex_unlock(&mutexAccesoColaPacientes);
+
+            sprintf(logMedico, "Atendido paciente %d con reaccion.", atiendoAReaccion);
+            writeLogMessage(logIdentificador, logMedico);
+        
+        }
+        /*Si no hay con reaccion, puedo vacunar a un paciente*/
+        else if(atiendoA != -1){ 
+            pthread_mutex_lock(&mutexAccesoColaPacientes);
+                posicion = obtienePosPaciente(atiendoA);
+                if(listaPacientes[posicion].atendido==0){
+                    listaPacientes[posicion].atendido=1;
+                    pthread_mutex_unlock(&mutexAccesoColaPacientes);
+
+                    sprintf(logMedico,"Va a atender a %d", atiendoA);
+                    writeLogMessage(logIdentificador, logMedico);
+                    
+                    atenderPacientes(atiendoA, posicion);
+
+                    sprintf(logMedico,"Termina de atender a %d", atiendoA);
+                    writeLogMessage(logIdentificador, logMedico);
+
+                    pthread_mutex_lock(&mutexAccesoColaPacientes);
+                        listaPacientes[posicion].atendido=2; //ya ha sido atendido
+                        int aux = listaPacientes[posicion].atendido;
+                    pthread_mutex_unlock(&mutexAccesoColaPacientes);
+
+                    sprintf(logMedico,"Envio la señal de que termine de vacunar a %d", posicion);
+                    writeLogMessage(logIdentificador, logMedico);
+                }
+            pthread_mutex_unlock(&mutexAccesoColaPacientes);
+        }
+     }
+
+}
+
+void *accionesEstadistico(){
+    int posicion = 0;
+    int i = 0;
+    int salir = 0;
+    char losEstadistico[100];
+    char losEstadistico2[100];
+
+    while(1) {
+
+        //Espera que le avisen de que hay paciente en estudio
+        do {
+            sleep(1);
+        } while (pacientesEnEstudio == 0);
+            
+        // Buscamos quien es
+        pthread_mutex_lock(&mutexAccesoColaPacientes);
+            for(i=0; i< CAPACIDAD_CONSULTORIO && salir == 0; i++){
+                if(listaPacientes[i].serologia = 1){
+                    posicion = i;
+                    salir = 0;
+                }
+            }
+        pthread_mutex_unlock(&mutexAccesoColaPacientes);
+
+        //Escribe log que comienza actividad
+        sprintf(losEstadistico, "[Estadístico] Un paciente va a iniciar el estudio serológico");
+        sprintf(losEstadistico2, "...realizando encuesta y tomando los datos del paciente...");
+        writeLogMessage(losEstadistico, losEstadistico2);
+
+        //Calcula tiempo de actividad(4segundos)
+        sleep(4);
+
+        //Termina la actividad y avisa al paciente
+        pthread_mutex_lock(&mutexEstadistico);
+            pthread_cond_signal(&condEstadistico); // Avisa al paciente para que se vaya
+            pacientesEnEstudio = 0;
+        pthread_mutex_unlock(&mutexEstadistico);
+
+        //Escribe log finaliza actividad
+        sprintf(losEstadistico, "[Estadístico] El paciente ha terminado el estudio serológico");
+        writeLogMessage(losEstadistico, "");
+
+        //Cambia paciente en estudio y vuelve a 1
+        pthread_mutex_lock(&mutexAccesoColaPacientes);
+
+            listaPacientes[posicion].serologia = 2;
+
+        pthread_mutex_unlock(&mutexAccesoColaPacientes);
+    }
+}
+
+void atenderPacientes(int id, int posicion){
+    int tipoAtencion = 0;
+    int tiempoGripe = 0, tiempoMalDocumentado = 0, tiempoBien = 0;
+
+    char atenderLog[100];
+    char logIdentificador[50];
+
+    tipoAtencion = calculaAleatorios(0,99);
+    tiempoGripe = calculaAleatorios(6,10);
+    tiempoMalDocumentado = calculaAleatorios(2,6);
+    tiempoBien = calculaAleatorios(1,4);
+
+    sprintf(logIdentificador, "[Enfermero/Medico]");
+
+    /*Tiene catarro o gripe*/
+    if(tipoAtencion < 10){ //Tiene catarro o gripe
+
+        sprintf(atenderLog, "Paciente %d tiene gripe por tanto NO se vacuna", id);
+        writeLogMessage(logIdentificador, atenderLog);
+        sleep(tiempoGripe);
+        sprintf(atenderLog, "Paciente %d sale del consultorio con gripe", id);
+        writeLogMessage(logIdentificador, atenderLog);
+
+        sacaPacienteDeCola(posicion);
+
+    }
+    /*Esta mas identificado*/
+    else if(tipoAtencion < 20){
+        sprintf(atenderLog, "Paciente %d Esta mal identificado, comienza la atencion al paciente", id);
+        writeLogMessage(logIdentificador, atenderLog);
+        sleep(tiempoMalDocumentado);
+        sprintf(atenderLog, "Paciente %d Esta mal identificado, finaliza la atencion al paciente", id);
+        writeLogMessage(logIdentificador, atenderLog);
+    }
+    /*Todo esta correcto*/
+    else{ 
+        sprintf(atenderLog, "Paciente %d tiene todo en regla, comienza la atencion al paciente", id);
+        writeLogMessage(logIdentificador, atenderLog);
+        sleep(tiempoBien);
+        sprintf(atenderLog, "Paciente %d tiene todo en regla, finaliza la atencion al paciente", id);
+        writeLogMessage(logIdentificador, atenderLog);
+
+    }
+
 }
 
 int pacientesEnCola(int tipoPaciente){
@@ -361,178 +575,6 @@ int cogerPaciente(int identificadorEnfermero){
         }
     pthread_mutex_unlock(&mutexAccesoColaPacientes);
     return id;
-
-}
-
-void *accionesEnfermero(void *id){
-    int i=0, encontrado=0, contadorCafe=0, posicion=0;
-    int identificador = *(int*)id; //el identificador del enfermero
-    int tipoPaciente=0;
-    int ocupado = 0;
-    int comprueboOtraVez = -1;
-    int atiendoA = -1;
-    
-   //////////
-
-    char msj[100];
-    sprintf(msj, "[Enfermero] Estoy funcionando");
-    writeLogMessage(msj, "");
-
-    while(1){
-           
-        while(pacientesEnCola(0) == 0){
-            sleep(1);
-        }
-        do{
-            atiendoA = cogerPaciente(identificador);
-            if (atiendoA == -1) {
-                atiendoA = cogerPacienteExtra();
-                comprueboOtraVez = cogerPaciente(identificador); // Para evitar que se roben
-                if (comprueboOtraVez != -1) {
-                    atiendoA = comprueboOtraVez;
-                }
-            }
-        }
-        while(atiendoA == -1);
-
-        pthread_mutex_lock(&mutexAccesoColaPacientes);
-            /*sprintf(msj, "contadorPacientesTotal = %d", contadorPacientesTotal);
-             writeLogMessage(msj, "");== 0
-             sprintf(msj, "contadorPacientes = %d", contadorPacientes);
-             writeLogMessage(msj, "");*/
-                    
-            posicion = obtienePosPaciente(atiendoA);
-            listaPacientes[posicion].atendido=1;
-
-            sprintf(msj, "posicion = %d", posicion);
-             writeLogMessage(msj, "");
-                       
-
-           /* sprintf(msj, "listaPacientes[posicion].atendido = %d", listaPacientes[posicion].atendido);
-             writeLogMessage(msj, "");*/
-
-        pthread_mutex_unlock(&mutexAccesoColaPacientes);
-
-        sprintf(msj, "[Enfermero %d] VA A ATENDER A  %d. ", identificador, atiendoA);
-        writeLogMessage(msj, "");
-
-        //pthread_mutex_unlock(&mutexAccesoColaPacientes);
-
-        sprintf(msj, "[Enfermero %d] Inicia la vacunacion con el paciente %d", identificador, atiendoA);
-        writeLogMessage(msj, "");
-
-        atenderPacientes(atiendoA,posicion);
-        
-        pthread_mutex_lock(&mutexAccesoColaPacientes);
-            listaPacientes[posicion].atendido=2; //ya ha sido atendido
-            int aux = listaPacientes[posicion].atendido;
-        pthread_mutex_unlock(&mutexAccesoColaPacientes);
-
-         //sprintf(msj, "AUXILIAR ENFERMERO %d", aux);
-        //writeLogMessage(msj, "");
-        
-        sprintf(msj, "[Enfermero %d] Envio la señal de que termine de vacunar a %d", identificador, posicion);
-        writeLogMessage(msj, "");
-       
-        
-        //pthread_cond_signal(&condVacunacion);
-
-    }
-       
-}
-void atenderPacientes(int id, int posicion){
-    int tipoAtencion = 0;
-    char atenderLog[100];
-    tipoAtencion = calculaAleatorios(0,99);
-
-    if(tipoAtencion < 10){ //Tiene catarro o gripe
-        sprintf(atenderLog, "[Enfermero/Medico]: Paciente %d TIENE CATARRO", id);
-        writeLogMessage(atenderLog, "");
-        sleep(1);
-        sprintf(atenderLog, "[Enfermero/Medico]: Paciente %d LO SACO", id);
-        writeLogMessage(atenderLog, "");
-
-        sacaPacienteDeCola(posicion);
-
-    }else if(tipoAtencion < 20){ //Mal identificado
-        sprintf(atenderLog, "[Enfermero/Medico]: Paciente %d Esta mal identificado, comienza la atencion al paciente", id);
-        writeLogMessage(atenderLog, "");
-        sleep(6);
-        sprintf(atenderLog, "[Enfermero/Medico]: Paciente %d Esta mal identificado, finaliza la atencion al paciente", id);
-        writeLogMessage(atenderLog, "");
-    }else{ //Todo correcto
-        sprintf(atenderLog, "[Enfermero/Medico]: Paciente %d tiene todo en regla, comienza la atencion al paciente", id);
-        writeLogMessage(atenderLog, "");
-        sleep(4);
-        sprintf(atenderLog, "[Enfermero/Medico]: Paciente %d tiene todo en regla, finaliza la atencion al paciente", id);
-        writeLogMessage(atenderLog, "");
-
-    }
-
-}
-void *accionesMedico(){
-    int i=0, encontrado=0, contadorCafe=0, posicion=0;
-    int tipoPaciente=0;
-    //int ocupado = 0;
-    int atiendoA = -1;
-    int atiendoAReaccion = -1;
-    char logMedico[100];
-
-    while(1){
-        while(pacientesEnCola(0) == 0 && pacientesEnCola(4) == 0){
-            sleep(1);
-        }
-        do{
-            atiendoAReaccion = cogerPacienteReaccion();
-            if (atiendoAReaccion == -1) {
-                atiendoA = cogerPacienteExtra();
-            }
-            sleep(1);
-        }
-        while(atiendoA == -1 && atiendoAReaccion == -1);
-
-        // sprintf(logMedico, "[Medico] Atiendo A: %d | Atiendo a reaccion: %d",atiendoA,atiendoAReaccion);
-        // writeLogMessage(logMedico, "");
-
-
-        if(atiendoAReaccion != -1){ //Si tiene reaccion atiende
-            pthread_mutex_lock(&mutexAccesoColaPacientes);
-                posicion = obtienePosPaciente(atiendoAReaccion); 
-            pthread_mutex_unlock(&mutexAccesoColaPacientes);
-            sleep(5);
-            pthread_mutex_lock(&mutexAccesoColaPacientes);
-               listaPacientes[posicion].atendido=5; 
-            pthread_mutex_unlock(&mutexAccesoColaPacientes);
-
-            sprintf(logMedico, "[Medico] Atendido paciente %d con reaccion.", atiendoAReaccion);
-            writeLogMessage(logMedico, "");
-        
-        }else if(atiendoA != -1){ //Sino, atiende normal
-            pthread_mutex_lock(&mutexAccesoColaPacientes);
-                posicion = obtienePosPaciente(atiendoA);
-                if(listaPacientes[posicion].atendido==0){
-                    listaPacientes[posicion].atendido=1;
-                    pthread_mutex_unlock(&mutexAccesoColaPacientes);
-
-                    sprintf(logMedico,"[Medico] VA A ATENDER A  %d", atiendoA);
-                    writeLogMessage(logMedico, "");
-                    
-                    sleep(4);
-
-                    sprintf(logMedico,"[Medico] Termina de atender a %d", atiendoA);
-                    writeLogMessage(logMedico, "");
-
-                    pthread_mutex_lock(&mutexAccesoColaPacientes);
-                        listaPacientes[posicion].atendido=2; //ya ha sido atendido
-                        int aux = listaPacientes[posicion].atendido;
-                    pthread_mutex_unlock(&mutexAccesoColaPacientes);
-
-                    sprintf(logMedico,"[Medico] Envio la señal de que termine de vacunar a %d", posicion);
-                    writeLogMessage(logMedico, "");
-                }
-            pthread_mutex_unlock(&mutexAccesoColaPacientes);
-        }
-     }
 
 }
 
@@ -589,56 +631,6 @@ int cogerPacienteReaccion(){
     return id;
 
 }
-void *accionesEstadistico(){
-    int posicion = 0;
-    int i = 0;
-    int salir = 0;
-    char losEstadistico[100];
-    char losEstadistico2[100];
-
-    while(1) {
-
-        //Espera que le avisen de que hay paciente en estudio
-        do {
-            sleep(1);
-        } while (pacientesEnEstudio == 0);
-            
-        // Buscamos quien es
-        pthread_mutex_lock(&mutexAccesoColaPacientes);
-            for(i=0; i< CAPACIDAD_CONSULTORIO && salir == 0; i++){
-                if(listaPacientes[i].serologia = 1){
-                    posicion = i;
-                    salir = 0;
-                }
-            }
-        pthread_mutex_unlock(&mutexAccesoColaPacientes);
-
-        //Escribe log que comienza actividad
-        sprintf(losEstadistico, "[Estadístico] Un paciente va a iniciar el estudio serológico");
-        sprintf(losEstadistico2, "...realizando encuesta y tomando los datos del paciente...");
-        writeLogMessage(losEstadistico, losEstadistico2);
-
-        //Calcula tiempo de actividad(4segundos)
-        sleep(4);
-
-        //Termina la actividad y avisa al paciente
-        pthread_mutex_lock(&mutexEstadistico);
-            pthread_cond_signal(&condEstadistico); // Avisa al paciente para que se vaya
-            pacientesEnEstudio = 0;
-        pthread_mutex_unlock(&mutexEstadistico);
-
-        //Escribe log finaliza actividad
-        sprintf(losEstadistico, "[Estadístico] El paciente ha terminado el estudio serológico");
-        writeLogMessage(losEstadistico, "");
-
-        //Cambia paciente en estudio y vuelve a 1
-        pthread_mutex_lock(&mutexAccesoColaPacientes);
-
-            listaPacientes[posicion].serologia = 2;
-
-        pthread_mutex_unlock(&mutexAccesoColaPacientes);
-    }
-}
 
 int obtienePosPaciente(int identificador){
     int posicion = -1;
@@ -653,6 +645,20 @@ int obtienePosPaciente(int identificador){
         }
     }
     return posicion;
+}
+void sacaPacienteDeCola(int posicion){
+
+    pthread_mutex_lock(&mutexAccesoColaPacientes);
+    //Sacamos el paciente de la cola
+
+    listaPacientes[posicion].id = -1;
+    listaPacientes[posicion].atendido = 0;
+    listaPacientes[posicion].tipo = 0;
+    listaPacientes[posicion].serologia = 0;
+    contadorPacientes--;
+
+    pthread_mutex_unlock(&mutexAccesoColaPacientes); 
+    pthread_exit(NULL);
 }
 void finPrograma(){
     

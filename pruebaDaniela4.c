@@ -36,7 +36,7 @@ int pacientesEnEstudio;
 int contadorPacientesTotal; //pacientes que llegan al consultorio
 
 FILE *logFile;//Fichero del log
-char *logFileName = "log.log";
+char *logFileName = "registroTiempos.log";
 
 //Estructuras   
 struct paciente{
@@ -94,7 +94,7 @@ int main(){
         listaPacientes[i].serologia = 0;
     }
     inicializaSemaforos();
-    //iniciarLog();
+    iniciarLog();
 
     
 
@@ -179,20 +179,20 @@ void nuevoPaciente (int sig){
 
             if(sig == SIGUSR1){
             listaPacientes[pos].tipo = 0;
-            sprintf(logInicio, "Nuevo paciente, tipo 0 ");
-            writeLogMessage(logInicio, "");
+            sprintf(logInicio, "Nuevo paciente, tipo");
+            writeLogMessage(logInicio, "0");
             }
             if(sig == SIGUSR2){
                 listaPacientes[pos].tipo = 1;
                 printf("Nuevo paciente, tipo 1\n");
-                sprintf(logInicio, "Nuevo paciente, tipo 1");
-                writeLogMessage(logInicio, "");
+                sprintf(logInicio, "Nuevo paciente, tipo");
+                writeLogMessage(logInicio, "1");
             }
             if(sig == SIGPIPE){
                 listaPacientes[pos].tipo = 2;
                 printf("Nuevo paciente, tipo 2\n");
-                sprintf(logInicio, "Nuevo paciente, tipo 2");
-                writeLogMessage(logInicio, "");
+                sprintf(logInicio, "Nuevo paciente, tipo");
+                writeLogMessage(logInicio, "2");
             }
             contadorPacientesTotal++;
             contadorPacientes++;
@@ -678,7 +678,7 @@ void finPrograma(){
 void iniciarLog(){
     logFile=fopen(logFileName,"w");
     fclose(logFile);
-    writeLogMessage("Consultorio Vacunacion Covid-19", "");
+    writeLogMessage("\nBienvenido al Consultorio Vacunacion Covid-19", "\n");
 }
 
 void writeLogMessage(char *id, char *msg){

@@ -23,12 +23,8 @@
 pthread_mutex_t mutexAccesoLog;
 pthread_mutex_t mutexAccesoColaPacientes;
 pthread_mutex_t mutexEstadistico;
-pthread_mutex_t mutexVacunacion;
-pthread_mutex_t mutexReaccion;
 
 pthread_cond_t condEstadistico;
-pthread_cond_t condVacunacion;
-pthread_cond_t condReaccion;
 
 //variables glogales
 int contadorPacientes; //pacientes que llegan a la cola
@@ -39,13 +35,10 @@ int finalizar; //para que termine el programa
 int pacientesEnEstudio;
 int contadorPacientesTotal; //pacientes que llegan al consultorio
 
-//int colaPacientes[CAPACIDAD_CONSULTORIO]; 
-
 FILE *logFile;//Fichero del log
 char *logFileName = "log.log";
 
-//estructuras  
-//estructuras  
+//Estructuras   
 struct paciente{
     int id;
     int atendido;
@@ -151,12 +144,8 @@ void inicializaSemaforos()
     if(pthread_mutex_init (&mutexAccesoLog, NULL)!=0) exit(-1);
     if(pthread_mutex_init (&mutexAccesoColaPacientes, NULL)!=0) exit(-1);
     if( pthread_mutex_init (&mutexEstadistico, NULL)!=0) exit(-1);
-    if(pthread_mutex_init (&mutexVacunacion, NULL)!=0) exit(-1);
-    if(pthread_mutex_init (&mutexReaccion, NULL)!=0) exit(-1);
 
     if(pthread_cond_init(&condEstadistico, NULL)!=0) exit(-1);
-    if(pthread_cond_init(&condVacunacion, NULL)!=0) exit(-1);
-    if(pthread_cond_init(&condReaccion, NULL)!=0) exit(-1);
 }
 
 void nuevoPaciente (int sig){

@@ -63,11 +63,12 @@ void atenderPacientes(int id, int posicion);
 void writeLogMessage(char *id, char *msg);
 void iniciarLog(); 
 void sacaPacienteDeCola(int posicion);
-int pacientesEnCola(int tipoPaciente);
+int pacientesEnCola(int tipoAtendido);
 int cogerPaciente(int identificadorEnfermero);
 int cogerPacienteExtra();
 int cogerPacienteReaccion();
 int calculaAleatorios(int min, int max);
+int pacientesRestantes();
 
 
 int main(){
@@ -155,59 +156,56 @@ void nuevoPaciente (int sig){
     signal(SIGUSR2, nuevoPaciente);
     signal(SIGPIPE, nuevoPaciente);
 
+    if(contadorPacientes < CAPACIDAD_CONSULTORIO){
+        int pos = 0;
+        int i = 0;
+        int stop = 0;
 
-    if ( 1){    //Condicion para acabar
-        if(contadorPacientes < CAPACIDAD_CONSULTORIO){
-            int pos = 0;
-            int i =0;
-            int stop = 0;
+        pthread_mutex_lock(&mutexAccesoColaPacientes);
 
-            pthread_mutex_lock(&mutexAccesoColaPacientes);
-
-            for(i = 0; i < CAPACIDAD_CONSULTORIO && stop == 0; i++){
-                if(listaPacientes[i].id == -1) {
-                    pos = i;
-                    stop = 1;
-                }
+        for(i = 0; i < CAPACIDAD_CONSULTORIO && stop == 0; i++){
+            if(listaPacientes[i].id == -1) {
+                pos = i;
+                stop = 1;
             }
-
-            int identif = contadorPacientesTotal;
-            listaPacientes[pos].id = identif;
-            listaPacientes[pos].atendido = 0;
-            listaPacientes[pos].serologia = 0;
-            
-
-            if(sig == SIGUSR1){
-            listaPacientes[pos].tipo = 0;
-            sprintf(logInicio, "Nuevo paciente, tipo");
-            writeLogMessage(logInicio, "0");
-            }
-            if(sig == SIGUSR2){
-                listaPacientes[pos].tipo = 1;
-                printf("Nuevo paciente, tipo 1\n");
-                sprintf(logInicio, "Nuevo paciente, tipo");
-                writeLogMessage(logInicio, "1");
-            }
-            if(sig == SIGPIPE){
-                listaPacientes[pos].tipo = 2;
-                printf("Nuevo paciente, tipo 2\n");
-                sprintf(logInicio, "Nuevo paciente, tipo");
-                writeLogMessage(logInicio, "2");
-            }
-            contadorPacientesTotal++;
-            contadorPacientes++;
-        pthread_mutex_unlock(&mutexAccesoColaPacientes);
-        pthread_create(&listaPacientes[pos].hiloEjecucionPaciente, NULL, accionesPaciente, (void *)&identif);
-
-        
-         //pthread_create(&enfermoHilo1, NULL, accionesPaciente, (void *)&identif);
-       
-            
-        }else{ //No hay hueco
-            char logSalidaCreacionPaciente[100];
-             printf("No hay espacio para más pacientes en la lista");
         }
-    }  
+
+        int identif = contadorPacientesTotal;
+        listaPacientes[pos].id = identif;
+        listaPacientes[pos].atendido = 0;
+        listaPacientes[pos].serologia = 0;
+        
+
+        if(sig == SIGUSR1){
+        listaPacientes[pos].tipo = 0;
+        sprintf(logInicio, "Nuevo paciente, tipo");
+        writeLogMessage(logInicio, "0");
+        }
+        if(sig == SIGUSR2){
+            listaPacientes[pos].tipo = 1;
+            printf("Nuevo paciente, tipo 1\n");
+            sprintf(logInicio, "Nuevo paciente, tipo");
+            writeLogMessage(logInicio, "1");
+        }
+        if(sig == SIGPIPE){
+            listaPacientes[pos].tipo = 2;
+            printf("Nuevo paciente, tipo 2\n");
+            sprintf(logInicio, "Nuevo paciente, tipo");
+            writeLogMessage(logInicio, "2");
+        }
+        contadorPacientesTotal++;
+        contadorPacientes++;
+    pthread_mutex_unlock(&mutexAccesoColaPacientes);
+    pthread_create(&listaPacientes[pos].hiloEjecucionPaciente, NULL, accionesPaciente, (void *)&identif);
+
+    
+     //pthread_create(&enfermoHilo1, NULL, accionesPaciente, (void *)&identif);
+   
+        
+    }else{ //No hay hueco
+        char logSalidaCreacionPaciente[100];
+         printf("No hay espacio para más pacientes en la lista");
+    } 
 }
 
 void *accionesPaciente(void *id){
@@ -245,7 +243,22 @@ void *accionesPaciente(void *id){
     while(listaPacientes[posicion].atendido == 0){
 
         /*Calculamos el comportamiento del paciente*/
+        reaccionPaciente = calculaAleatorios(0,99);
 
+        if(reaccionPaciente  < 10){
+            sprintf(logPacientes, "El paciente %d sale del consultorio. Se lo ha pensado mejor", identificador);
+            writeLogMessage(logIdentificador, logPacientes);
+            sacaPacienteDeCola(posicion);
+        }else if(reaccionPaciente < 30){
+            sprintf(logPacientes, "El paciente %d sale del consultorio. Se ha cansado de esperar", identificador);
+            writeLogMessage(logIdentificador, logPacientes);
+            sacaPacienteDeCola(posicion);
+        }else if(reaccionPaciente < 35){
+            sprintf(logPacientes, "El paciente %d sale del consultorio. Fue al baño y perdio su turno", identificador);
+            writeLogMessage(logIdentificador, logPacientes);
+            sacaPacienteDeCola(posicion);
+
+        }
         /*Duerme 3 segundos*/
         sleep(3);
     }
@@ -325,6 +338,7 @@ void *accionesEnfermero(void *id){
         while(pacientesEnCola(0) == 0){
             sleep(1);
         }
+        // Ahora empieza a haber pacientes
         do{
             /*Busco de mi tipo*/
             atiendoA = cogerPaciente(identificador);
@@ -332,10 +346,6 @@ void *accionesEnfermero(void *id){
             /*Si no hay busco de otro y vuelvo a comprobar que no haya de mi tipo*/
             if (atiendoA == -1) {
                 atiendoA = cogerPacienteExtra();
-                comprueboOtraVez = cogerPaciente(identificador); // Para evitar que se roben
-                if (comprueboOtraVez != -1) {
-                    atiendoA = comprueboOtraVez;
-                }
             }
             //Sleep?
         }
@@ -361,9 +371,19 @@ void *accionesEnfermero(void *id){
         pthread_mutex_unlock(&mutexAccesoColaPacientes);
 
         /*Comprueba si toma cafe*/
-        //TODO
+        contadorCafe++;
+        /*Cada vez que se atienden 5 pacientes, el enfermer@ descansa 5 segundos*/
+        if(contadorCafe==5)
+        {
+            sleep(5);
+            contadorCafe=0;
+            sprintf(logEnfermero, "Va a tomar un cafe");
+            writeLogMessage(logIdentificador, logEnfermero);
+        }
 
     }
+
+    pthread_exit(NULL);
        
 }
 
@@ -437,6 +457,8 @@ void *accionesMedico(){
         }
      }
 
+     pthread_exit(NULL);
+
 }
 
 void *accionesEstadistico(){
@@ -501,11 +523,11 @@ void atenderPacientes(int id, int posicion){
     tiempoGripe = calculaAleatorios(6,10);
     tiempoMalDocumentado = calculaAleatorios(2,6);
     tiempoBien = calculaAleatorios(1,4);
-
+    // Si la id es null, el identificador es medico, sino, es enfermero. Nuevo argumento de id de enfermero
     sprintf(logIdentificador, "[Enfermero/Medico]");
 
-    /*Tiene catarro o gripe*/
-    if(tipoAtencion < 10){ //Tiene catarro o gripe
+                                    /*Tiene catarro o gripe*/
+    if(tipoAtencion < 10){ 
 
         sprintf(atenderLog, "Paciente %d tiene gripe por tanto NO se vacuna", id);
         writeLogMessage(logIdentificador, atenderLog);
@@ -516,16 +538,14 @@ void atenderPacientes(int id, int posicion){
         sacaPacienteDeCola(posicion);
 
     }
-    /*Esta mas identificado*/
-    else if(tipoAtencion < 20){
+    else if(tipoAtencion < 20){     /*Esta mas identificado*/
         sprintf(atenderLog, "Paciente %d Esta mal identificado, comienza la atencion al paciente", id);
         writeLogMessage(logIdentificador, atenderLog);
         sleep(tiempoMalDocumentado);
         sprintf(atenderLog, "Paciente %d Esta mal identificado, finaliza la atencion al paciente", id);
         writeLogMessage(logIdentificador, atenderLog);
     }
-    /*Todo esta correcto*/
-    else{ 
+    else{                           /*Todo esta correcto*/
         sprintf(atenderLog, "Paciente %d tiene todo en regla, comienza la atencion al paciente", id);
         writeLogMessage(logIdentificador, atenderLog);
         sleep(tiempoBien);
@@ -536,13 +556,13 @@ void atenderPacientes(int id, int posicion){
 
 }
 
-int pacientesEnCola(int tipoPaciente){
+int pacientesEnCola(int tipoAtendido){
     int i = 0, j = 0;
 
     pthread_mutex_lock(&mutexAccesoColaPacientes);
 
         for(i = 0; i < CAPACIDAD_CONSULTORIO; i++){
-            if(listaPacientes[i].id != -1 && listaPacientes[i].atendido == tipoPaciente){
+            if(listaPacientes[i].id != -1 && listaPacientes[i].atendido == tipoAtendido){
                 j++;
             }
         }    
@@ -554,17 +574,19 @@ int pacientesEnCola(int tipoPaciente){
 int cogerPaciente(int identificadorEnfermero){
     int i = 0; 
     int id = -1;
-    int salirFor = 0;
+
     pthread_mutex_lock(&mutexAccesoColaPacientes);
-        for(i = 0; i < CAPACIDAD_CONSULTORIO && salirFor == 0; i++){
+    int min = contadorPacientesTotal;
+        for(i = 0; i < CAPACIDAD_CONSULTORIO; i++){
             if(listaPacientes[i].atendido == 0 && listaPacientes[i].tipo == identificadorEnfermero && listaPacientes[i].id != -1){
-                id = listaPacientes[i].id;
-                salirFor = 1;
+               if(listaPacientes[i].id < min && listaPacientes[i].id != -1){
+                    min = listaPacientes[i].id;
+                    id = min;
+                }
             }
         }
     pthread_mutex_unlock(&mutexAccesoColaPacientes);
     return id;
-
 }
 
 int cogerPacienteExtra(){ //Si quiero que los recorra en orden, un break en el segundo for
@@ -572,7 +594,7 @@ int cogerPacienteExtra(){ //Si quiero que los recorra en orden, un break en el s
     int id = -1;
     int count0 = 0, count1 = 0, count2 = 0;
     int tipoPaciente;
-    int tipoQueMasTiene;
+    int tipoQueMasTiene[2]; // En [0] guardamos cual es el tipo, en [1] guardamos cuantos
 
     pthread_mutex_lock(&mutexAccesoColaPacientes);
         for(i = 0; i < CAPACIDAD_CONSULTORIO; i++){
@@ -585,17 +607,29 @@ int cogerPacienteExtra(){ //Si quiero que los recorra en orden, un break en el s
                 
             }
         }
+    pthread_mutex_unlock(&mutexAccesoColaPacientes);
         //Calculo el maximo de ellos
-        tipoQueMasTiene = 0;
-        if(count0 > count1 && count0 > count2) tipoQueMasTiene = 0;
-        else if(count1 > count0 && count1 > count2) tipoQueMasTiene = 1;
-        else if(count2 > count0 && count2 > count1) tipoQueMasTiene = 2;
+        tipoQueMasTiene[0] = 0;
+        tipoQueMasTiene[1] = 0;
+        if(count0 > count1 && count0 > count2) {
+            tipoQueMasTiene[0] = 0;
+            tipoQueMasTiene[1] = count0;
+        } else if(count1 > count0 && count1 > count2) {
+            tipoQueMasTiene[0] = 1;
+            tipoQueMasTiene[1] = count1;
+        } else if(count2 > count0 && count2 > count1) {
+            tipoQueMasTiene[0] = 2;
+            tipoQueMasTiene[1] = count2;
+        }
         //pthread_mutex_unlock(&mutexAccesoColaPacientes);
+
+    pthread_mutex_lock(&mutexAccesoColaPacientes);
         
         for(i = 0; i < CAPACIDAD_CONSULTORIO; i++){
            
-            if(listaPacientes[i].atendido == 0 && listaPacientes[i].tipo == tipoQueMasTiene && listaPacientes[i].id != -1){
-                id = listaPacientes[i].id;
+            if(listaPacientes[i].atendido == 0 && listaPacientes[i].tipo == tipoQueMasTiene[0] && listaPacientes[i].id != -1){
+                if (tipoQueMasTiene[1] > 1) // SOLO cogemos otro si le sobran, o sea, si tiene más de 1
+                    id = listaPacientes[i].id;
                 //printf("paso por aqui\n");
             }
         }
@@ -624,8 +658,6 @@ int cogerPacienteReaccion(){
 int obtienePosPaciente(int identificador){
     int posicion = -1;
     int i = 0;
-    char msj[100];
-    
     
     //Obtiene la posicion del paciente en la cola de pacientes
     for(i = 0; i < CAPACIDAD_CONSULTORIO; i++){
@@ -649,30 +681,35 @@ void sacaPacienteDeCola(int posicion){
     pthread_mutex_unlock(&mutexAccesoColaPacientes); 
     pthread_exit(NULL);
 }
+
+int pacientesRestantes() {
+    pthread_mutex_lock(&mutexAccesoColaPacientes);
+    finalizar=1;
+    int contador = contadorPacientes;
+    pthread_mutex_unlock(&mutexAccesoColaPacientes);
+    return contador;
+
+}
+
 void finPrograma(){
-    
+    char finalizarLog[100];
+    char identificadorLog[50];
     int i=0;
     int salir = 0;
-    
-    pthread_mutex_lock(&mutexAccesoColaPacientes);
-    
-    while(i<contadorPacientes && salir == 0){
-        salir = 1;
-        
-        if(listaPacientes[i].atendido == 0){//no ha sido atendido todavia
-                salir = 0;
-                //sleep(1);
-            }
-            i++;
-        }
-  
-    pthread_mutex_unlock(&mutexAccesoColaPacientes);
 
-    char finVacunaciones[100];
-    printf("La vacunación ha terminado");
+    sprintf(identificadorLog,"Finalizar Programa", posicion);
+    sprintf(finalizarLog,"Se envia la señal de terminar Vacunacion");
+    writeLogMessage(identificadorLog, finalizarLog);
+     
+    while(pacientesRestantes() != 0){
+        sleep(1);
+    }
+
+    sprintf(finalizarLog,"La vacunación ha terminado");
+    writeLogMessage(identificadorLog, finalizarLog);
 
     //salimos del porgrama
-    finalizar=1;
+    exit(0);
 }
 
 void iniciarLog(){
